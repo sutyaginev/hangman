@@ -34,7 +34,7 @@ public class Hangman {
                 case QUIT:
                     return;
                 default:
-                    System.out.printf("Вы должны ввести число %s или %s.", START, QUIT);
+                    System.out.printf("Вы должны ввести число %s или %s. \n", START, QUIT);
             }
         }
     }
@@ -63,22 +63,10 @@ public class Hangman {
     }
 
     private static void startGameRound(List<String> words) {
-        char[][] board = createBoard();
         String word = chooseRandomWord(words);
 //        System.out.printf("Загаданное слово: %s%n", word); // Раскомментировать, чтобы отобразить загаданное слово
-        startGameLoop(board, word);
+        startGameLoop(word);
 
-    }
-
-    private static char[][] createBoard() {
-        return new char[][]{
-                "---- ".toCharArray(),
-                "|  | ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray()
-        };
     }
 
     private static String chooseRandomWord(List<String> words) {
@@ -86,19 +74,19 @@ public class Hangman {
         return words.get(randomWordNumber);
     }
 
-    private static void startGameLoop(char[][] board, String word) {
+    private static void startGameLoop(String word) {
         int errorsCount = 0;
         int guessedCount = 0;
         Set<Character> incorrectLetters = new TreeSet<>();
         StringBuilder mask = new StringBuilder("_".repeat(word.length()));
 
         while (true) {
-            printGameState(board, errorsCount, mask, incorrectLetters);
+            printGameState(errorsCount, mask, incorrectLetters);
             String gameState = createGameState(word, errorsCount, guessedCount);
 
             if (!Objects.equals(gameState, GAME_STATE_NOT_FINISHED)) {
                 System.out.println(gameState);
-                System.out.printf("Загаданное слово: %s %n", word);
+                System.out.printf("Загаданное слово: %s %n %n", word);
                 return;
             }
 
@@ -112,16 +100,12 @@ public class Hangman {
             } else {
                 errorsCount++;
                 incorrectLetters.add(letter);
-                fillBoardWithManikin(board, errorsCount);
             }
         }
     }
 
-    private static void printGameState(char[][] board, int errorsCount, StringBuilder mask, Set<Character> incorrectLetters) {
-        for (char[] chars : board) {
-            System.out.print(new String(chars));
-            System.out.println();
-        }
+    private static void printGameState(int errorsCount, StringBuilder mask, Set<Character> incorrectLetters) {
+        System.out.println(Board.getPicture(errorsCount));
         System.out.printf("Слово: [%s] %n", mask.toString());
         System.out.printf("Ошибки (%d): %s %n", errorsCount, incorrectLetters.toString());
     }
@@ -181,29 +165,6 @@ public class Hangman {
             if (word.charAt(i) == letter) {
                 mask.setCharAt(i, letter);
             }
-        }
-    }
-
-    private static void fillBoardWithManikin(char[][] board, int errorsCount) {
-        switch (errorsCount) {
-            case 1:
-                board[2][3] = 'o';
-                break;
-            case 2:
-                board[3][3] = '|';
-                break;
-            case 3:
-                board[3][2] = '/';
-                break;
-            case 4:
-                board[3][4] = '\\';
-                break;
-            case 5:
-                board[4][2] = '/';
-                break;
-            case 6:
-                board[4][4] = '\\';
-                break;
         }
     }
 }
