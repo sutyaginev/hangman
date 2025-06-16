@@ -7,29 +7,59 @@ public class Hangman {
     private static final String GAME_STATE_WIN = "Победа!";
     private static final String GAME_STATE_LOSS = "Проигрыш...";
     private static final String GAME_STATE_NOT_FINISHED = "Игра не окончена";
-    public static final int MAX_ERRORS_COUNT = 6;
-    public static final Scanner SCANNER = new Scanner(System.in);
+    private final static String START = "1";
+    private final static String QUIT = "2";
+    private static final int MAX_ERRORS_COUNT = 6;
+    private static final Scanner SCANNER = new Scanner(System.in);
 
     public static void main(String[] args) {
         List<String> words = new ArrayList<>();
 
         while (true) {
-            System.out.print("\n1. Новая игра\n2. Выход\nВыберите вариант: ");
+            System.out.println("1. Новая игра");
+            System.out.println("2. Выход");
+            System.out.print("Выберите вариант: ");
             String input = SCANNER.nextLine();
+
             switch (input) {
-                case "1":
-                    if (words.isEmpty()) {
-                        words = writeWordsToList();
+                case START:
+                    words = load(words);
+
+                    if (words == null) {
+                        return;
                     }
 
                     startGameRound(words);
                     break;
-                case "2":
+                case QUIT:
                     return;
                 default:
-                    System.out.println("Вы должны ввести число 1 или 2.");
+                    System.out.printf("Вы должны ввести число %s или %s.", START, QUIT);
             }
         }
+    }
+
+    private static List<String> load(List<String> words) {
+        if (words.isEmpty()) {
+            try {
+                words = readWords();
+            } catch (IOException e) {
+                System.out.println("Файл со словами не найден. Работа программы завершена.");
+                return null;
+            }
+        }
+        return words;
+    }
+
+    private static List<String> readWords() throws IOException {
+        Scanner scanner = new Scanner(Paths.get("src/words.txt"));
+        List<String> words = new ArrayList<>();
+
+        while (scanner.hasNext()) {
+            words.add(scanner.nextLine());
+        }
+
+        return words;
     }
 
     private static void startGameRound(List<String> words) {
@@ -40,27 +70,43 @@ public class Hangman {
 
     }
 
+    private static char[][] createBoard() {
+        return new char[][]{
+                "---- ".toCharArray(),
+                "|  | ".toCharArray(),
+                "|    ".toCharArray(),
+                "|    ".toCharArray(),
+                "|    ".toCharArray(),
+                "|    ".toCharArray()
+        };
+    }
+
+    private static String chooseRandomWord(List<String> words) {
+        int randomWordNumber = new Random().nextInt(words.size());
+        return words.get(randomWordNumber);
+    }
+
     private static void startGameLoop(char[][] board, String word) {
         int errorsCount = 0;
         int guessedCount = 0;
         Set<Character> incorrectLetters = new TreeSet<>();
-        StringBuilder encryptedWord = new StringBuilder("_".repeat(word.length()));
+        StringBuilder mask = new StringBuilder("_".repeat(word.length()));
 
         while (true) {
-            printGameState(board, errorsCount, encryptedWord, incorrectLetters);
-            String gameState = checkGameState(word, errorsCount, guessedCount);
+            printGameState(board, errorsCount, mask, incorrectLetters);
+            String gameState = createGameState(word, errorsCount, guessedCount);
 
             if (!Objects.equals(gameState, GAME_STATE_NOT_FINISHED)) {
                 System.out.println(gameState);
-                System.out.printf("Загаданное слово: %s%n", word);
+                System.out.printf("Загаданное слово: %s %n", word);
                 return;
             }
 
-            char letter = inputLetter(encryptedWord, incorrectLetters);
+            char letter = inputLetter(mask, incorrectLetters);
             int countGuessedLetters = countGuessedLetters(word, letter);
 
             if (countGuessedLetters > 0) {
-                fillEncryptedWord(word, encryptedWord, letter);
+                openLetterInMask(word, mask, letter);
                 guessedCount += countGuessedLetters;
 
             } else {
@@ -71,16 +117,16 @@ public class Hangman {
         }
     }
 
-    private static void printGameState(char[][] board, int errorsCount, StringBuilder encryptedWord, Set<Character> incorrectLetters) {
+    private static void printGameState(char[][] board, int errorsCount, StringBuilder mask, Set<Character> incorrectLetters) {
         for (char[] chars : board) {
             System.out.print(new String(chars));
             System.out.println();
         }
-        System.out.printf("Слово: [%s]%n", encryptedWord.toString());
-        System.out.printf("Ошибки (%d): %s%n", errorsCount, incorrectLetters.toString());
+        System.out.printf("Слово: [%s] %n", mask.toString());
+        System.out.printf("Ошибки (%d): %s %n", errorsCount, incorrectLetters.toString());
     }
 
-    private static String checkGameState(String word, int errorsCount, int guessCount) {
+    private static String createGameState(String word, int errorsCount, int guessCount) {
         if (errorsCount >= MAX_ERRORS_COUNT) {
             return GAME_STATE_LOSS;
         }
@@ -90,6 +136,32 @@ public class Hangman {
         }
 
         return GAME_STATE_NOT_FINISHED;
+    }
+
+    private static char inputLetter(StringBuilder mask, Set<Character> incorrectLetters) {
+        while (true) {
+            System.out.print("Буква: ");
+            String input = SCANNER.nextLine().toLowerCase().trim();
+
+            if (!isRussianLetter(input)) {
+                System.out.println("Необходимо ввести одну букву русского алфавита.");
+                continue;
+            }
+
+            char letter = input.charAt(0);
+
+            if (mask.indexOf(String.valueOf(letter)) != -1) {
+                System.out.println("Вы уже вводили данную букву и отгадали её.");
+            } else if (incorrectLetters.contains(letter)) {
+                System.out.println("Вы уже вводили данную букву. Эта буква не содержится в слове.");
+            } else {
+                return letter;
+            }
+        }
+    }
+
+    private static boolean isRussianLetter(String input) {
+        return input.matches("[а-яё]");
     }
 
     private static int countGuessedLetters(String word, char letter) {
@@ -104,10 +176,10 @@ public class Hangman {
         return sum;
     }
 
-    private static void fillEncryptedWord(String word, StringBuilder encryptedWord, char letter) {
+    private static void openLetterInMask(String word, StringBuilder mask, char letter) {
         for (int i = 0; i < word.length(); i++) {
             if (word.charAt(i) == letter) {
-                encryptedWord.setCharAt(i, letter);
+                mask.setCharAt(i, letter);
             }
         }
     }
@@ -133,57 +205,5 @@ public class Hangman {
                 board[4][4] = '\\';
                 break;
         }
-    }
-
-    private static char inputLetter(StringBuilder encryptedWord, Set<Character> incorrectLetters) {
-        while (true) {
-            System.out.print("Буква: ");
-            String inputString = SCANNER.nextLine().toLowerCase().trim();
-
-            if (!inputString.matches("[а-яё]")) {
-                System.out.println("Необходимо ввести одну букву русского алфавита.");
-                continue;
-            }
-
-            char letter = inputString.charAt(0);
-
-            if (encryptedWord.indexOf(String.valueOf(letter)) != -1) {
-                System.out.println("Вы уже вводили данную букву и отгадали её.");
-            } else if (incorrectLetters.contains(letter)) {
-                System.out.println("Вы уже вводили данную букву. Эта буква не содержится в слове.");
-            } else {
-                return letter;
-            }
-        }
-    }
-
-    private static char[][] createBoard() {
-        return new char[][]{
-                "---- ".toCharArray(),
-                "|  | ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray(),
-                "|    ".toCharArray()
-        };
-    }
-
-    private static String chooseRandomWord(List<String> words) {
-        int randomWordNumber = new Random().nextInt(words.size());
-        return words.get(randomWordNumber);
-    }
-
-    private static List<String> writeWordsToList() {
-        List<String> words = new ArrayList<>();
-
-        try (Scanner scanner = new Scanner(Paths.get("src/words.txt"))) {
-            while (scanner.hasNext()) {
-                words.add(scanner.nextLine());
-            }
-        } catch (IOException e) {
-            System.out.println("File not found" + e.getMessage());
-        }
-
-        return words;
     }
 }
