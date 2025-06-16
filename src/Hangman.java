@@ -6,7 +6,6 @@ public class Hangman {
 
     private static final String GAME_STATE_WIN = "Победа!";
     private static final String GAME_STATE_LOSS = "Проигрыш...";
-    private static final String GAME_STATE_NOT_FINISHED = "Игра не окончена";
     private final static String START = "1";
     private final static String QUIT = "2";
     private static final int MAX_ERRORS_COUNT = 6;
@@ -64,7 +63,7 @@ public class Hangman {
 
     private static void startGameRound(List<String> words) {
         String word = chooseRandomWord(words);
-//        System.out.printf("Загаданное слово: %s%n", word); // Раскомментировать, чтобы отобразить загаданное слово
+//        System.out.printf("Загаданное слово: %s \n", word); // Раскомментировать, чтобы отобразить загаданное слово
         startGameLoop(word);
 
     }
@@ -82,11 +81,15 @@ public class Hangman {
 
         while (true) {
             printGameState(errorsCount, mask, incorrectLetters);
-            String gameState = createGameState(word, errorsCount, guessedCount);
 
-            if (!Objects.equals(gameState, GAME_STATE_NOT_FINISHED)) {
-                System.out.println(gameState);
-                System.out.printf("Загаданное слово: %s %n %n", word);
+            if (isWin(word, guessedCount)) {
+                System.out.println(GAME_STATE_WIN + "\n");
+                return;
+            }
+
+            if (isLose(errorsCount)) {
+                System.out.println(GAME_STATE_LOSS);
+                System.out.printf("Загаданное слово: %s \n \n", word);
                 return;
             }
 
@@ -105,21 +108,17 @@ public class Hangman {
     }
 
     private static void printGameState(int errorsCount, StringBuilder mask, Set<Character> incorrectLetters) {
-        System.out.println(Board.getPicture(errorsCount));
-        System.out.printf("Слово: [%s] %n", mask.toString());
-        System.out.printf("Ошибки (%d): %s %n", errorsCount, incorrectLetters.toString());
+        System.out.print(Board.getPicture(errorsCount));
+        System.out.printf("Слово: [%s] \n", mask.toString());
+        System.out.printf("Ошибки (%d): %s \n \n", errorsCount, incorrectLetters.toString());
     }
 
-    private static String createGameState(String word, int errorsCount, int guessCount) {
-        if (errorsCount >= MAX_ERRORS_COUNT) {
-            return GAME_STATE_LOSS;
-        }
+    private static boolean isWin(String word, int guessCount) {
+        return guessCount == word.length();
+    }
 
-        if (guessCount == word.length()) {
-            return GAME_STATE_WIN;
-        }
-
-        return GAME_STATE_NOT_FINISHED;
+    private static boolean isLose(int errorsCount) {
+        return errorsCount >= MAX_ERRORS_COUNT;
     }
 
     private static char inputLetter(StringBuilder mask, Set<Character> incorrectLetters) {
